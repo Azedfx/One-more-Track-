@@ -1,6 +1,7 @@
 package market
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -184,6 +185,15 @@ func klines(ctx context.Context, client *mcp.Client, symbol string, since time.T
 }
 
 func parseKlines(raw json.RawMessage) ([]Bar, time.Time, error) {
+	// The MCP sometimes double-encodes the payload: `data` arrives as a JSON
+	// string whose contents are themselves the JSON object. Unwrap that once.
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) > 0 && trimmed[0] == '"' {
+		var inner string
+		if err := json.Unmarshal(trimmed, &inner); err == nil {
+			raw = json.RawMessage(inner)
+		}
+	}
 	var wrap struct {
 		Results []struct {
 			Date   string  `json:"date"`

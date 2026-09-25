@@ -92,14 +92,28 @@ func (s *Server) load(fresh bool) (market.Book, error) {
 		}
 	}
 	log.Printf("downloading daily prices from Bitget")
-	book, err := market.Load(context.Background(), s.cfg.MCPURL)
-	if err != nil {
-		return market.Book{}, err
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	book, err := market.Load(ctx, s.cfg.MCPURL)
+	if err == nil {
+		if err := market.SaveCache(cachePath, book); err != nil {
+			log.Printf("cache write: %v", err)
+		}
+		return book, nil
 	}
-	if err := market.SaveCache(cachePath, book); err != nil {
-		log.Printf("cache write: %v", err)
+	// Live refresh failed (e.g. the host is geo-blocked by the candle API).
+	// Fall back to the last good cache, then to the bundled seed, so the
+	// service still renders a backtest instead of failing to boot.
+	log.Printf("live price download failed: %v", err)
+	if book, ok := market.LoadCachedStale(cachePath); ok {
+		log.Printf("serving last cached prices from %s (stale)", book.Fetched.Format(time.RFC3339))
+		return book, nil
 	}
-	return book, nil
+	if book, ok := market.Seed(); ok {
+		log.Printf("serving the bundled seed dataset (%d days through %s)", len(book.Days), book.Prov.LastDay.Format("2006-01-02"))
+		return book, nil
+	}
+	return market.Book{}, err
 }
 
 func (s *Server) page(w http.ResponseWriter, r *http.Request) {

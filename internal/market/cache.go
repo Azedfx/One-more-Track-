@@ -18,6 +18,10 @@ type cacheFile struct {
 }
 
 func LoadCached(path string) (Book, bool) {
+	return loadCached(path, false)
+}
+
+func loadCached(path string, ignoreTTL bool) (Book, bool) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return Book{}, false
@@ -26,7 +30,10 @@ func LoadCached(path string) (Book, bool) {
 	if err := json.Unmarshal(b, &file); err != nil {
 		return Book{}, false
 	}
-	if time.Since(file.Fetched) > cacheTTL || len(file.Days) == 0 {
+	if len(file.Days) == 0 {
+		return Book{}, false
+	}
+	if !ignoreTTL && time.Since(file.Fetched) > cacheTTL {
 		return Book{}, false
 	}
 	prov := file.Prov

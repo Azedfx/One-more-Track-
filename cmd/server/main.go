@@ -22,11 +22,29 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if !*once {
+		// Server mode: start listening immediately so health checks pass, and
+		// warm the price cache in the background. A data hiccup must not stop
+		// the service from booting; requests fall back to the bundled seed.
+		go func() {
+			if _, _, _, err := srv.Compute(*fresh); err != nil {
+				log.Printf("initial price load failed, will serve on demand: %v", err)
+			}
+		}()
+		addr := ":" + cfg.Port
+		log.Printf("Regime Sleeve listening on http://localhost%s", addr)
+		if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+
 	book, result, narrative, err := srv.Compute(*fresh)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if *once {
+	{
 		m := result.Full.Strategy
 		o := result.OutSample.Strategy
 		in := result.InSample.Strategy
@@ -58,11 +76,5 @@ func main() {
 				oosStart.Format("2006-01-02"), market.RTokenLaunch.Format("2006-01-02"))
 		}
 		os.Exit(0)
-	}
-
-	addr := ":" + cfg.Port
-	log.Printf("Regime Sleeve listening on http://localhost%s", addr)
-	if err := http.ListenAndServe(addr, srv.Handler()); err != nil {
-		log.Fatal(err)
 	}
 }

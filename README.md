@@ -61,6 +61,14 @@ docker run -d -p 8080:8080 -v regime-cache:/app/.cache --name regime-sleeve regi
 - Config comes from environment variables (`PORT`, `BITGET_US_MCP_URL`, optional `QWEN_API_KEY`, ...). Compose reads `.env` if present; `.env` is never baked into the image (see `.dockerignore`).
 - Runs as a non-root user (uid 10001).
 
+### Offline resilience
+
+Some cloud hosts (Render, and other providers) are geo-blocked by Bitget's public candle API, so a live download can fail there. The service degrades gracefully instead of crashing:
+
+1. fresh on-disk cache → 2. live download from Bitget → 3. last good cache (stale) → 4. a **bundled seed dataset** compiled into the binary (`internal/market/seed_market.json`).
+
+The seed is the exact panel behind the reported metrics, so the deployed page always renders the same verified backtest even with no network. The server also starts listening immediately and warms prices in the background, so a data hiccup never blocks boot or the `/health` check.
+
 ## What the page is for
 
 Judges need strategy code, a backtest of at least 60 days, and at least 30 days held out of sample. The page shows Sharpe, Sortino, max drawdown, turnover, the in-sample versus out-of-sample split, and the handbook decay check (out-of-sample Sharpe below half the in-sample Sharpe). `GET /backtest.csv` is the daily path.
