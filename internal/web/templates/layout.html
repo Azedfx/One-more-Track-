@@ -144,15 +144,15 @@
   {{end}}
 
   <h2>The rule (alpha logic)</h2>
-  <p class="meta">Frozen in <code>internal/strategy/spec.go</code>. One holding at a time, decided on yesterday's close.</p>
+  <p class="meta">Frozen in <code>internal/strategy/spec.go</code>. One holding at a time, decided on yesterday's close. The numbers below are read straight from the backtest's <code>Spec</code>, so they always match the code that ran.</p>
   <ul class="rules">
     <li>Look at yesterday's close only. Today's close is the result, not an input.</li>
-    <li>Hold the broad US market token (rSPY) when it is above its 100-day average and recent swings are under 28% a year.</li>
-    <li>Otherwise hold Bitcoin if its price is above the 50-day average and the stock trend is not that calm uptrend.</li>
-    <li>Otherwise hold gold if gold is above its 50-day average. Otherwise hold cash.</li>
-    <li>A holding must clear its trend line by 3% to switch on, and only drops when price falls back below the line, and it is held at least two trading weeks. That buffer keeps switching down to about three times a year.</li>
+    <li>Hold the broad US market token (rSPY) when it is above its {{.Result.Spec.EquitySMA}}-day average and recent swings are under {{share .Result.Spec.VolStress}} a year.</li>
+    <li>Otherwise hold Bitcoin if its price is above the {{.Result.Spec.AltSMA}}-day average and the stock trend is not that calm uptrend.</li>
+    <li>Otherwise hold gold if gold is above its {{.Result.Spec.AltSMA}}-day average. Otherwise hold cash.</li>
+    <li>A holding must clear its trend line by {{share .Result.Spec.Band}} to switch on, only drops when price falls back below the line, and is held at least {{.Result.Spec.MinHold}} trading days. Across this test that kept switching down to {{num .Result.Full.Strategy.Turnover}} times a year.</li>
     <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
-    <li>Each change of holding costs 15 bps (a fee plus a small slippage allowance).</li>
+    <li>Each change of holding costs {{bps .Result.Spec.CostRate}} (a fee plus a small slippage allowance){{if gt (num2 .Result.Spec.CostRate) 0.0}}, and a harsher {{bps .Result.Harsh.CostShown}}{{end}}.</li>
   </ul>
 
   <h2>Where the money sat</h2>
