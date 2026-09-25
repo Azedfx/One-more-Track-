@@ -1,0 +1,6 @@
+.env
+.cache/
+*.exe
+/server
+/regime-sleeve
+.DS_Store

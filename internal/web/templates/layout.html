@@ -1,0 +1,231 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Regime Sleeve · Alpha Factory</title>
+  <script src="/static/htmx.min.js"></script>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --paper: #fbf8f2;
+      --ink: #1c1915;
+      --muted: #5e584e;
+      --line: #d8d0c3;
+      --pos: #1f6b45;
+      --neg: #9c2f2f;
+      --alert: #8a5a12;
+      --alert-bg: #f4e6cc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 17px/1.45 Georgia, "Iowan Old Style", Palatino, serif;
+    }
+    main { max-width: 980px; margin: 0 auto; padding: 32px 20px 64px; }
+    header.top { border-bottom: 1px solid var(--line); padding-bottom: 18px; margin-bottom: 22px; }
+    .kicker { letter-spacing: .08em; text-transform: uppercase; font: 12px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin: 0 0 8px; }
+    h1 { font-size: 40px; font-weight: 500; margin: 0 0 8px; }
+    h2 { font-size: 22px; font-weight: 500; margin: 28px 0 8px; }
+    p { margin: 0 0 12px; }
+    .lede { font-size: 18px; max-width: 68ch; }
+    .row { display: flex; gap: 16px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    button, a.btn {
+      font: 13px/1 ui-sans-serif, system-ui, sans-serif;
+      background: var(--ink); color: var(--paper); border: 0; border-radius: 4px;
+      padding: 10px 14px; text-decoration: none; cursor: pointer;
+    }
+    a.link { color: var(--ink); }
+    .num, table, .meta, .rules, .src { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+    .grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+    .card h2 { margin-top: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    th:first-child, td:first-child { text-align: left; }
+    th { font-weight: 600; color: var(--muted); }
+    .neg { color: var(--neg); }
+    .alert { background: var(--alert-bg); color: var(--alert); border: 1px solid #e2c98a; padding: 10px 12px; border-radius: 4px; }
+    .oknote { color: var(--muted); font-size: 14px; }
+    ul { margin: 8px 0 0; padding-left: 18px; }
+    li { margin: 4px 0; }
+    .mix { display: grid; grid-template-columns: 150px 1fr 72px; gap: 8px; align-items: center; font: 13px/1.2 ui-monospace, Menlo, monospace; margin: 6px 0; }
+    .bar { background: #e7e0d4; height: 8px; border-radius: 99px; }
+    .bar > span { display: block; height: 8px; background: var(--ink); border-radius: 99px; }
+    .chart { width: 100%; height: auto; background: var(--paper); }
+    .zero { stroke: #c8bfb1; stroke-width: 1; }
+    .legend { font: 12px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); }
+    .swatch { display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; }
+    footer { margin-top: 28px; color: var(--muted); font-size: 14px; }
+    #spin { font: 12px ui-sans-serif, system-ui, sans-serif; color: var(--muted); opacity: 0; }
+    .htmx-request #spin { opacity: 1; }
+    .err { color: var(--neg); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
+    @media (max-width: 800px) { .stats { grid-template-columns: 1fr; } }
+    .stat { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+    .stat .k { font: 12px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .06em; }
+    .stat .v { font: 32px/1.1 ui-sans-serif, system-ui, sans-serif; margin: 0 0 6px; }
+    .stat .s { font: 14px/1.35 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin: 0; }
+    .hold { font: 28px/1.2 ui-sans-serif, system-ui, sans-serif; margin: 0 0 8px; }
+    details { margin-top: 18px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; }
+    summary { cursor: pointer; font: 15px/1.3 ui-sans-serif, system-ui, sans-serif; }
+    .gloss { font: 15px/1.45 ui-sans-serif, system-ui, sans-serif; }
+    .gloss dt { font-weight: 600; margin-top: 8px; }
+    .gloss dd { margin: 0 0 0 0; color: var(--muted); }
+  </style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <p class="kicker">Bitget AI Base Camp S2 · Alpha Factory · Cross-Asset Allocation / Rotation</p>
+    <div class="row">
+      <h1>Regime Sleeve</h1>
+      <div>
+        <button hx-get="/backtest?fresh=1" hx-target="#results" hx-swap="innerHTML" hx-indicator="#spin">Update prices</button>
+        <span id="spin"> Downloading prices from Bitget…</span>
+      </div>
+    </div>
+    <p class="lede">When the US market trend is healthy and calm, the rule holds the broad market token (rSPY). When that trend breaks, it rotates into Bitcoin, gold, or cash. One holding at a time, with a buffer around each trend line so it does not flip on noise. This is a backtest. It does not send orders.</p>
+  </header>
+  <div id="results">
+    {{template "results" .}}
+  </div>
+  <footer>
+    <p>Independent of the AI Trading Desk entry. This track is the strategy and the backtest. No orders are sent.</p>
+  </footer>
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "results"}}
+{{if .Err}}
+  <p class="err">The backtest did not run: {{.Err}}</p>
+{{else}}
+  <article class="card">
+    <p class="kicker">What it would hold next</p>
+    <p class="hold">{{label .Result.Snap.NextSleeve}}</p>
+    <div id="why">{{.Narrative}}</div>
+    <p class="meta">Using the close on {{day .Result.Snap.AsOf}}. US stock token {{px .Result.Snap.Equity}} against its 100-day average {{px .Result.Snap.EquitySMA}}. Recent price swings {{pct .Result.Snap.RealizedVol}} a year. The rule steps aside when that number is above 28%.</p>
+  </article>
+
+  <section class="stats">
+    <article class="stat">
+      <p class="k">Result of the rule</p>
+      <p class="v {{if neg .Result.Full.Strategy.TotalReturn}}neg{{end}}">{{pct .Result.Full.Strategy.TotalReturn}}</p>
+      <p class="s">{{day .Result.Full.Strategy.Start}} to {{day .Result.Full.Strategy.End}}, {{.Result.Full.Strategy.Days}} weekdays. A cost is charged each time the holding changes.</p>
+    </article>
+    <article class="stat">
+      <p class="k">Just holding US stocks</p>
+      <p class="v {{if neg .Result.Full.Hold.TotalReturn}}neg{{end}}">{{pct .Result.Full.Hold.TotalReturn}}</p>
+      <p class="s">Same dates, never switching. This is the comparison that shows whether the switching helped.</p>
+    </article>
+    <article class="stat">
+      <p class="k">Worst fall from a high</p>
+      <p class="v neg">{{pct .Result.Full.Strategy.MaxDrawdown}}</p>
+      <p class="s">Holding the stock token the whole time fell {{pct .Result.Full.Hold.MaxDrawdown}}. Smaller is calmer.</p>
+    </article>
+  </section>
+
+  {{if .Result.Alert}}
+  <p class="alert">On the latest {{.Result.OOSDays}} weekdays the rule scored worse than on the earlier days. Judges treat that as a warning that the older result may not repeat.</p>
+  {{else}}
+  <p class="oknote">On the latest {{.Result.OOSDays}} weekdays the rule still scored at least half as well as on the earlier days.</p>
+  {{end}}
+
+  <h2>Where the money sat</h2>
+  <p>Every token in the book is listed, including ones it never held. The US names are sector tokens. Bitcoin and gold are the other two asset classes.</p>
+  {{range .Mix}}
+  <div class="mix"><span>{{.Name}}</span><div class="bar"><span style="width: {{.Width}}"></span></div><span>{{share .Pct}}</span></div>
+  {{end}}
+
+  <h2>Growth of $1</h2>
+  <p class="legend"><span class="swatch" style="background:#1f6b45"></span>The rule <span class="swatch" style="background:#8a8175"></span>Just holding the US stock token</p>
+  {{.EquityChart}}
+  <p class="meta">If the two lines sit on top of each other, the rule spent almost the whole test in US stocks.</p>
+
+  <h2>How far it fell</h2>
+  <p class="meta">Each dip is the drop from the highest point so far. The line returns to zero when the high is matched again.</p>
+  {{.DrawChart}}
+
+  <h2>Words on this page</h2>
+  <dl class="gloss">
+    <dt>Sharpe</dt>
+    <dd>The score judges use. It is the profit divided by how bumpy the path was. Around 1 is a solid path. It is not a forecast.</dd>
+    <dt>Held-out days</dt>
+    <dd>The last {{.Result.OOSDays}} weekdays were not used to design the rule. They are the check that the older result was not a fluke.</dd>
+    <dt>rSPY</dt>
+    <dd>Bitget's token of the S&amp;P 500 (the SPY ETF). It is the stock holding when the market trend is healthy. The sector tokens are loaded too, but this frozen rule holds the broad market rather than chasing a sector.</dd>
+    <dt>PAXG</dt>
+    <dd>A token that tracks gold. That is the gold holding.</dd>
+    <dt>Update prices</dt>
+    <dd>Downloads the candles again. The first open, and every click of that button, can take a minute. A normal refresh of the page uses the prices already saved.</dd>
+  </dl>
+
+  <details>
+    <summary>Score sheet (the numbers the form asks for)</summary>
+    <h2>Whole test</h2>
+    <p class="meta">Sharpe on this test is {{num .Result.Full.Strategy.Sharpe}} for the rule and {{num .Result.Full.Hold.Sharpe}} for holding the stock token. Sortino is the same idea, counting only the down days.</p>
+    <table>
+      <thead><tr><th></th><th>The rule</th><th>Hold US stocks</th><th>Split 3 ways</th></tr></thead>
+      <tbody>
+        {{template "metricRows" .Result.Full}}
+      </tbody>
+    </table>
+    <h2>Earlier days and the latest {{.Result.OOSDays}} days</h2>
+    <table>
+      <thead><tr><th></th><th>Earlier days</th><th>Latest days</th><th>Latest, hold stocks</th><th>Latest, split 3 ways</th></tr></thead>
+      <tbody>
+        <tr><td>Days</td><td>{{.Result.InSample.Strategy.Days}}</td><td>{{.Result.OutSample.Strategy.Days}}</td><td>{{.Result.OutSample.Hold.Days}}</td><td>{{.Result.OutSample.Blend.Days}}</td></tr>
+        <tr><td>Total return</td><td class="{{if neg .Result.InSample.Strategy.TotalReturn}}neg{{end}}">{{pct .Result.InSample.Strategy.TotalReturn}}</td><td class="{{if neg .Result.OutSample.Strategy.TotalReturn}}neg{{end}}">{{pct .Result.OutSample.Strategy.TotalReturn}}</td><td class="{{if neg .Result.OutSample.Hold.TotalReturn}}neg{{end}}">{{pct .Result.OutSample.Hold.TotalReturn}}</td><td class="{{if neg .Result.OutSample.Blend.TotalReturn}}neg{{end}}">{{pct .Result.OutSample.Blend.TotalReturn}}</td></tr>
+        <tr><td>Sharpe</td><td class="{{if neg .Result.InSample.Strategy.Sharpe}}neg{{end}}">{{num .Result.InSample.Strategy.Sharpe}}</td><td class="{{if neg .Result.OutSample.Strategy.Sharpe}}neg{{end}}">{{num .Result.OutSample.Strategy.Sharpe}}</td><td class="{{if neg .Result.OutSample.Hold.Sharpe}}neg{{end}}">{{num .Result.OutSample.Hold.Sharpe}}</td><td class="{{if neg .Result.OutSample.Blend.Sharpe}}neg{{end}}">{{num .Result.OutSample.Blend.Sharpe}}</td></tr>
+        <tr><td>Sortino</td><td>{{num .Result.InSample.Strategy.Sortino}}</td><td>{{num .Result.OutSample.Strategy.Sortino}}</td><td>{{num .Result.OutSample.Hold.Sortino}}</td><td>{{num .Result.OutSample.Blend.Sortino}}</td></tr>
+        <tr><td>Worst fall</td><td class="neg">{{pct .Result.InSample.Strategy.MaxDrawdown}}</td><td class="neg">{{pct .Result.OutSample.Strategy.MaxDrawdown}}</td><td class="neg">{{pct .Result.OutSample.Hold.MaxDrawdown}}</td><td class="neg">{{pct .Result.OutSample.Blend.MaxDrawdown}}</td></tr>
+      </tbody>
+    </table>
+    <p class="meta">Rolling {{.Result.Roll.Window}}-day Sharpe: median {{num .Result.Roll.Median}}, worst {{num .Result.Roll.Min}}, above zero {{share .Result.Roll.Positive}} of the time.</p>
+    {{.RollChart}}
+    <p class="meta">At a harsher 40 bps cost each switch, Sharpe is {{num .Result.Harsh.Sharpe}} and the worst fall is {{pct .Result.Harsh.MaxDrawdown}}.</p>
+  </details>
+
+  <details>
+    <summary>How a day is chosen, and where the prices come from</summary>
+    <ul class="rules">
+      <li>Look at yesterday's close only. Today's close is the result, not an input.</li>
+      <li>Hold the broad US market token (rSPY) when it is above its 100-day average and recent swings are under 28% a year.</li>
+      <li>Otherwise hold Bitcoin if its price is above the 50-day average and the stock trend is not that calm uptrend.</li>
+      <li>Otherwise hold gold if gold is above its 50-day average. Otherwise hold cash.</li>
+      <li>A holding must clear its trend line by 3% to switch on, and only drops when price falls back below the line, and it is held at least two trading weeks. That buffer keeps switching down to about three times a year.</li>
+      <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
+      <li>Each change of holding costs 15 bps (a fee plus a small slippage allowance).</li>
+    </ul>
+    <ul class="src">
+      {{range .Book.Meta}}
+      <li>{{.Name}} ({{.Symbol}}): {{.Bars}} daily prices, {{day .Start}} to {{day .End}}. {{.Source}}{{if .Note}}. {{.Note}}{{end}}</li>
+      {{end}}
+    </ul>
+    <p class="meta"><strong>Data provenance.</strong> {{.Book.Prov.Note}}</p>
+    <p class="meta">{{.Book.HistNote}}</p>
+    <p class="meta">Prices saved {{day .Book.Fetched}}. <a class="link" href="/backtest.csv">Download the daily results</a>.</p>
+  </details>
+{{end}}
+{{end}}
+
+{{define "metricRows"}}
+<tr><td>Window</td><td>{{day .Strategy.Start}} → {{day .Strategy.End}}</td><td>{{day .Hold.Start}} → {{day .Hold.End}}</td><td>{{day .Blend.Start}} → {{day .Blend.End}}</td></tr>
+<tr><td>Days</td><td>{{.Strategy.Days}}</td><td>{{.Hold.Days}}</td><td>{{.Blend.Days}}</td></tr>
+<tr><td>Total return</td><td class="{{if neg .Strategy.TotalReturn}}neg{{end}}">{{pct .Strategy.TotalReturn}}</td><td class="{{if neg .Hold.TotalReturn}}neg{{end}}">{{pct .Hold.TotalReturn}}</td><td class="{{if neg .Blend.TotalReturn}}neg{{end}}">{{pct .Blend.TotalReturn}}</td></tr>
+<tr><td>CAGR</td><td class="{{if neg .Strategy.CAGR}}neg{{end}}">{{pct .Strategy.CAGR}}</td><td class="{{if neg .Hold.CAGR}}neg{{end}}">{{pct .Hold.CAGR}}</td><td class="{{if neg .Blend.CAGR}}neg{{end}}">{{pct .Blend.CAGR}}</td></tr>
+<tr><td>Sharpe</td><td class="{{if neg .Strategy.Sharpe}}neg{{end}}">{{num .Strategy.Sharpe}}</td><td class="{{if neg .Hold.Sharpe}}neg{{end}}">{{num .Hold.Sharpe}}</td><td class="{{if neg .Blend.Sharpe}}neg{{end}}">{{num .Blend.Sharpe}}</td></tr>
+<tr><td>Sortino</td><td>{{num .Strategy.Sortino}}</td><td>{{num .Hold.Sortino}}</td><td>{{num .Blend.Sortino}}</td></tr>
+<tr><td>Max drawdown</td><td class="neg">{{pct .Strategy.MaxDrawdown}}</td><td class="neg">{{pct .Hold.MaxDrawdown}}</td><td class="neg">{{pct .Blend.MaxDrawdown}}</td></tr>
+<tr><td>Days that made money</td><td>{{pct .Strategy.WinRate}}</td><td>{{pct .Hold.WinRate}}</td><td>{{pct .Blend.WinRate}}</td></tr>
+<tr><td>Times it switched</td><td>{{.Strategy.Switches}}</td><td>—</td><td>—</td></tr>
+<tr><td>Winning switches</td><td>{{pct .Strategy.TradeWin}} of {{.Strategy.Trades}}</td><td>—</td><td>—</td></tr>
+<tr><td>Profit ÷ losses</td><td>{{pf .Strategy}}</td><td>{{pf .Hold}}</td><td>{{pf .Blend}}</td></tr>
+<tr><td>Switches per year</td><td>{{num .Strategy.Turnover}}</td><td>—</td><td>—</td></tr>
+{{end}}

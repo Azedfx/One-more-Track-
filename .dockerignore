@@ -1,0 +1,13 @@
+# Keep secrets and local state out of the build context / image.
+.env
+.cache/
+.git
+.gitignore
+.DS_Store
+*.exe
+/server
+/regime-sleeve
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
