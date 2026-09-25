@@ -111,7 +111,7 @@
     <p class="kicker">What it would hold next</p>
     <p class="hold">{{label .Result.Snap.NextSleeve}}</p>
     <div id="why">{{.Narrative}}</div>
-    <p class="meta">Using the close on {{day .Result.Snap.AsOf}}. US stock token {{px .Result.Snap.Equity}} against its 100-day average {{px .Result.Snap.EquitySMA}}. Recent price swings {{pct .Result.Snap.RealizedVol}} a year. The rule steps aside when that number is above 28%.</p>
+    <p class="meta">Using the close on {{day .Result.Snap.AsOf}}. US stock token {{px .Result.Snap.Equity}} against its {{.Result.Spec.EquitySMA}}-day average {{px .Result.Snap.EquitySMA}}. Recent price swings {{pct .Result.Snap.RealizedVol}} a year. The rule steps aside when that number is above {{share .Result.Spec.VolStress}}.</p>
   </article>
 
   <section class="stats">
@@ -152,7 +152,7 @@
     <li>Otherwise hold gold if gold is above its {{.Result.Spec.AltSMA}}-day average. Otherwise hold cash.</li>
     <li>A holding must clear its trend line by {{share .Result.Spec.Band}} to switch on, only drops when price falls back below the line, and is held at least {{.Result.Spec.MinHold}} trading days. Across this test that kept switching down to {{num .Result.Full.Strategy.Turnover}} times a year.</li>
     <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
-    <li>Each change of holding costs {{bps .Result.Spec.CostRate}} (a fee plus a small slippage allowance). A harsher 40 bps run is in the score sheet.</li>
+    <li>Each change of holding costs {{bps .Result.Spec.CostRate}} (a fee plus a small slippage allowance). A harsher {{bps .Result.HarshCost}} run is in the score sheet.</li>
   </ul>
 
   <h2>Where the money sat</h2>
@@ -209,7 +209,7 @@
     </table>
     <p class="meta">Rolling {{.Result.Roll.Window}}-day Sharpe: median {{num .Result.Roll.Median}}, worst {{num .Result.Roll.Min}}, above zero {{share .Result.Roll.Positive}} of the time.</p>
     {{.RollChart}}
-    <p class="meta">At a harsher 40 bps cost each switch, Sharpe is {{num .Result.Harsh.Sharpe}} and the worst fall is {{pct .Result.Harsh.MaxDrawdown}}.</p>
+    <p class="meta">At a harsher {{bps .Result.HarshCost}} cost each switch, Sharpe is {{num .Result.Harsh.Sharpe}} and the worst fall is {{pct .Result.Harsh.MaxDrawdown}}.</p>
   </details>
 
   <details open>
