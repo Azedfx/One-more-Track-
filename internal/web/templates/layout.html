@@ -64,8 +64,9 @@
     #spin { font: 12px ui-sans-serif, system-ui, sans-serif; color: var(--muted); opacity: 0; }
     .htmx-request #spin { opacity: 1; }
     .err { color: var(--neg); }
-    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 16px 0; }
-    @media (max-width: 800px) { .stats { grid-template-columns: 1fr; } }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+    @media (max-width: 560px) { .stats { grid-template-columns: 1fr; } }
+    .stat .v.pos { color: var(--pos); }
     .stat { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
     .stat .k { font: 12px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); margin: 0 0 6px; text-transform: uppercase; letter-spacing: .06em; }
     .stat .v { font: 32px/1.1 ui-sans-serif, system-ui, sans-serif; margin: 0 0 6px; }
@@ -115,19 +116,24 @@
 
   <section class="stats">
     <article class="stat">
-      <p class="k">Result of the rule</p>
-      <p class="v {{if neg .Result.Full.Strategy.TotalReturn}}neg{{end}}">{{pct .Result.Full.Strategy.TotalReturn}}</p>
-      <p class="s">{{day .Result.Full.Strategy.Start}} to {{day .Result.Full.Strategy.End}}, {{.Result.Full.Strategy.Days}} weekdays. A cost is charged each time the holding changes.</p>
+      <p class="k">Sharpe (whole test)</p>
+      <p class="v pos">{{num .Result.Full.Strategy.Sharpe}}</p>
+      <p class="s">Sortino {{num .Result.Full.Strategy.Sortino}}. Buy-and-hold rSPY scores {{num .Result.Full.Hold.Sharpe}} on the same dates.</p>
     </article>
     <article class="stat">
-      <p class="k">Just holding US stocks</p>
-      <p class="v {{if neg .Result.Full.Hold.TotalReturn}}neg{{end}}">{{pct .Result.Full.Hold.TotalReturn}}</p>
-      <p class="s">Same dates, never switching. This is the comparison that shows whether the switching helped.</p>
+      <p class="k">Out-of-sample Sharpe</p>
+      <p class="v {{if neg .Result.OutSample.Strategy.Sharpe}}neg{{else}}pos{{end}}">{{num .Result.OutSample.Strategy.Sharpe}}</p>
+      <p class="s">On the {{.Result.OOSDays}} held-out days vs {{num .Result.InSample.Strategy.Sharpe}} in-sample. Decay check: {{if .Result.Alert}}<strong>flagged</strong>{{else}}passed (≥ half){{end}}.</p>
+    </article>
+    <article class="stat">
+      <p class="k">Total return</p>
+      <p class="v {{if neg .Result.Full.Strategy.TotalReturn}}neg{{else}}pos{{end}}">{{pct .Result.Full.Strategy.TotalReturn}}</p>
+      <p class="s">{{day .Result.Full.Strategy.Start}} → {{day .Result.Full.Strategy.End}}, {{.Result.Full.Strategy.Days}} weekdays. Hold rSPY made {{pct .Result.Full.Hold.TotalReturn}}.</p>
     </article>
     <article class="stat">
       <p class="k">Worst fall from a high</p>
       <p class="v neg">{{pct .Result.Full.Strategy.MaxDrawdown}}</p>
-      <p class="s">Holding the stock token the whole time fell {{pct .Result.Full.Hold.MaxDrawdown}}. Smaller is calmer.</p>
+      <p class="s">Holding rSPY the whole time fell {{pct .Result.Full.Hold.MaxDrawdown}}. Turnover {{num .Result.Full.Strategy.Turnover}} switches a year.</p>
     </article>
   </section>
 
@@ -136,6 +142,18 @@
   {{else}}
   <p class="oknote">On the latest {{.Result.OOSDays}} weekdays the rule still scored at least half as well as on the earlier days.</p>
   {{end}}
+
+  <h2>The rule (alpha logic)</h2>
+  <p class="meta">Frozen in <code>internal/strategy/spec.go</code>. One holding at a time, decided on yesterday's close.</p>
+  <ul class="rules">
+    <li>Look at yesterday's close only. Today's close is the result, not an input.</li>
+    <li>Hold the broad US market token (rSPY) when it is above its 100-day average and recent swings are under 28% a year.</li>
+    <li>Otherwise hold Bitcoin if its price is above the 50-day average and the stock trend is not that calm uptrend.</li>
+    <li>Otherwise hold gold if gold is above its 50-day average. Otherwise hold cash.</li>
+    <li>A holding must clear its trend line by 3% to switch on, and only drops when price falls back below the line, and it is held at least two trading weeks. That buffer keeps switching down to about three times a year.</li>
+    <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
+    <li>Each change of holding costs 15 bps (a fee plus a small slippage allowance).</li>
+  </ul>
 
   <h2>Where the money sat</h2>
   <p>Every token in the book is listed, including ones it never held. The US names are sector tokens. Bitcoin and gold are the other two asset classes.</p>
@@ -152,7 +170,8 @@
   <p class="meta">Each dip is the drop from the highest point so far. The line returns to zero when the high is matched again.</p>
   {{.DrawChart}}
 
-  <h2>Words on this page</h2>
+  <details>
+  <summary>Words on this page (plain-English glossary)</summary>
   <dl class="gloss">
     <dt>Sharpe</dt>
     <dd>The score judges use. It is the profit divided by how bumpy the path was. Around 1 is a solid path. It is not a forecast.</dd>
@@ -165,8 +184,9 @@
     <dt>Update prices</dt>
     <dd>Downloads the candles again. The first open, and every click of that button, can take a minute. A normal refresh of the page uses the prices already saved.</dd>
   </dl>
+  </details>
 
-  <details>
+  <details open>
     <summary>Score sheet (the numbers the form asks for)</summary>
     <h2>Whole test</h2>
     <p class="meta">Sharpe on this test is {{num .Result.Full.Strategy.Sharpe}} for the rule and {{num .Result.Full.Hold.Sharpe}} for holding the stock token. Sortino is the same idea, counting only the down days.</p>
@@ -192,17 +212,8 @@
     <p class="meta">At a harsher 40 bps cost each switch, Sharpe is {{num .Result.Harsh.Sharpe}} and the worst fall is {{pct .Result.Harsh.MaxDrawdown}}.</p>
   </details>
 
-  <details>
-    <summary>How a day is chosen, and where the prices come from</summary>
-    <ul class="rules">
-      <li>Look at yesterday's close only. Today's close is the result, not an input.</li>
-      <li>Hold the broad US market token (rSPY) when it is above its 100-day average and recent swings are under 28% a year.</li>
-      <li>Otherwise hold Bitcoin if its price is above the 50-day average and the stock trend is not that calm uptrend.</li>
-      <li>Otherwise hold gold if gold is above its 50-day average. Otherwise hold cash.</li>
-      <li>A holding must clear its trend line by 3% to switch on, and only drops when price falls back below the line, and it is held at least two trading weeks. That buffer keeps switching down to about three times a year.</li>
-      <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
-      <li>Each change of holding costs 15 bps (a fee plus a small slippage allowance).</li>
-    </ul>
+  <details open>
+    <summary>Where the prices come from (sources &amp; provenance)</summary>
     <ul class="src">
       {{range .Book.Meta}}
       <li>{{.Name}} ({{.Symbol}}): {{.Bars}} daily prices, {{day .Start}} to {{day .End}}. {{.Source}}{{if .Note}}. {{.Note}}{{end}}</li>
