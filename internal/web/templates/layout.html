@@ -152,7 +152,7 @@
     <li>Otherwise hold gold if gold is above its {{.Result.Spec.AltSMA}}-day average. Otherwise hold cash.</li>
     <li>A holding must clear its trend line by {{share .Result.Spec.Band}} to switch on, only drops when price falls back below the line, and is held at least {{.Result.Spec.MinHold}} trading days. Across this test that kept switching down to {{num .Result.Full.Strategy.Turnover}} times a year.</li>
     <li>Saturday and Sunday are not treated as days you can trade. A Friday holding is scored through Monday's close.</li>
-    <li>Each change of holding costs {{bps .Result.Spec.CostRate}} (a fee plus a small slippage allowance){{if gt (num2 .Result.Spec.CostRate) 0.0}}, and a harsher {{bps .Result.Harsh.CostShown}}{{end}}.</li>
+    <li>Each change of holding costs {{bps .Result.Spec.CostRate}} (a fee plus a small slippage allowance). A harsher 40 bps run is in the score sheet.</li>
   </ul>
 
   <h2>Where the money sat</h2>
