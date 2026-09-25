@@ -76,7 +76,7 @@ func (s *Server) Compute(fresh bool) (market.Book, backtest.Result, string, erro
 	if err != nil {
 		return market.Book{}, backtest.Result{}, "", err
 	}
-	narrative := plainExplain(result.Snap)
+	narrative := plainExplain(result.Snap, result.Spec)
 	s.book = book
 	s.result = result
 	s.narrative = narrative
@@ -135,7 +135,7 @@ func (s *Server) note(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(w, explain(r.Context(), s.cfg, result.Snap))
+	fmt.Fprint(w, explain(r.Context(), s.cfg, result.Snap, result.Spec))
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string) {
