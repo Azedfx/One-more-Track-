@@ -49,6 +49,7 @@ type Result struct {
 	InSample  Trio
 	OutSample Trio
 	Harsh     Metrics
+	HarshCost float64 // one-way cost used in the Harsh sensitivity run
 	Roll      RollStats
 	Snap      Snapshot
 	GapShare  float64
@@ -102,11 +103,13 @@ func Run(days []market.Day, spec strategy.Spec) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	harsh, err := runPath(days, spec.HarshCost())
+	harshSpec := spec.HarshCost()
+	harsh, err := runPath(days, harshSpec)
 	if err != nil {
 		return Result{}, err
 	}
 	primary.Harsh = harsh.Full.Strategy
+	primary.HarshCost = harshSpec.CostRate
 	return primary, nil
 }
 
