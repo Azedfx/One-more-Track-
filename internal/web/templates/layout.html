@@ -73,6 +73,7 @@
     .holding .now .name { font-size: 30px; font-weight: 800; letter-spacing: -.02em; margin-top: 2px; }
     .holding .why { flex: 1; min-width: 240px; color: #33415a; }
     .holding .asof { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+    .narr-src { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: #eef2f7; color: var(--muted); font-size: 11px; vertical-align: middle; }
 
     /* KPI tiles */
     .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 16px; }
@@ -182,7 +183,7 @@
       <div class="name">{{label .Result.Snap.NextSleeve}}</div>
     </div>
     <div class="why">
-      <div>{{.Narrative}}</div>
+      <div hx-get="/note" hx-trigger="load" hx-swap="innerHTML"><span class="narr-text">{{.Narrative}}</span> <span class="narr-src mono">narration · loading…</span></div>
       <div class="asof mono">As of close {{day .Result.Snap.AsOf}} · rSPY {{px .Result.Snap.Equity}} vs {{.Result.Spec.EquitySMA}}-day avg {{px .Result.Snap.EquitySMA}} · realized vol {{pct .Result.Snap.RealizedVol}}/yr (step-aside above {{share .Result.Spec.VolStress}})</div>
     </div>
   </div>
