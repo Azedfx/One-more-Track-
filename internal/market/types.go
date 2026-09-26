@@ -42,4 +42,9 @@ type Book struct {
 	HistNote string
 	Prov     Provenance
 	Fetched  time.Time
+	// Origin records how this book was obtained on the current load:
+	// "live" (fresh Bitget download), "cache" (recent on-disk cache),
+	// "stale" (older cache after a failed refresh), or "seed" (bundled
+	// dataset because the host could not reach Bitget). Not persisted.
+	Origin string `json:"-"`
 }
