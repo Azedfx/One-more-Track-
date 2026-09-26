@@ -1,7 +1,6 @@
 package market
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,35 +34,35 @@ func Load(ctx context.Context, mcpURL string) (Book, error) {
 	}
 	out := make([]fetched, len(listings))
 	errCh := make(chan int, len(listings))
+	// Cap concurrent Bitget requests. Firing all 14 symbols (each paginated)
+	// at once trips the public candle API's rate limit and drops series at
+	// random, which can fail a required leg. A small pool keeps it reliable.
+	sem := make(chan struct{}, 4)
 	for i, item := range listings {
 		go func(i int, item strategy.Listing) {
 			defer func() { errCh <- i }()
-			client := mcp.New(mcpURL)
-			bars, source, err := klines(ctx, client, item.Pair, since)
-			if err != nil || seriesShort(bars, since) {
-				rest, restErr := bitgetSpot(ctx, item.Pair, since)
-				if restErr == nil && longer(rest, bars) {
-					log.Printf("%s: MCP feed had %d days, public Bitget candles have %d", item.Title, len(bars), len(rest))
-					bars = rest
-					source = "Bitget spot API (api.bitget.com)"
-					out[i] = fetched{key: item.Key, bars: bars, meta: metaFor(item.Title, item.Pair, source, bars, "")}
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			required := item.Role != "sector"
+			// Price series come from Bitget's public spot candle API. Per the S2
+			// handbook, bitget-mcp-server serves US-stock quotes and fundamentals,
+			// not these rToken/crypto spot klines — its kline entry returns no
+			// usable data for these pairs — so it is probed once for the record
+			// (see probeEquityHistorical) rather than driving the price feed.
+			bars, err := bitgetSpotRetry(ctx, item.Pair, since, required)
+			if err != nil || len(bars) == 0 {
+				if required {
+					if err == nil {
+						err = fmt.Errorf("no candles")
+					}
+					out[i] = fetched{err: fmt.Errorf("%s: %w", item.Pair, err)}
 					return
 				}
-			}
-			required := item.Role != "sector"
-			if (err != nil || len(bars) == 0) && required {
-				if err == nil {
-					err = fmt.Errorf("no candles")
-				}
-				out[i] = fetched{err: fmt.Errorf("%s: %w", item.Pair, err)}
-				return
-			}
-			if err != nil || len(bars) == 0 {
 				log.Printf("%s: no usable history, left out of the rotation", item.Title)
 				out[i] = fetched{key: item.Key, meta: metaFor(item.Title, item.Pair, "unavailable", nil, "no daily history returned")}
 				return
 			}
-			out[i] = fetched{key: item.Key, bars: bars, meta: metaFor(item.Title, item.Pair, source, bars, "")}
+			out[i] = fetched{key: item.Key, bars: bars, meta: metaFor(item.Title, item.Pair, "Bitget spot candle API (api.bitget.com)", bars, "")}
 		}(i, item)
 	}
 	for range listings {
@@ -106,24 +105,6 @@ func Load(ctx context.Context, mcpURL string) (Book, error) {
 	return book, nil
 }
 
-// seriesShort is true when the MCP page walk did not cover the requested span.
-func seriesShort(bars []Bar, since time.Time) bool {
-	if len(bars) == 0 {
-		return true
-	}
-	return bars[0].Date.After(since.Add(45 * 24 * time.Hour))
-}
-
-func longer(a, b []Bar) bool {
-	if len(a) == 0 {
-		return false
-	}
-	if len(b) == 0 {
-		return true
-	}
-	return a[0].Date.Before(b[0].Date.Add(-24 * time.Hour))
-}
-
 func metaFor(name, symbol, source string, bars []Bar, note string) SeriesMeta {
 	m := SeriesMeta{Name: name, Symbol: symbol, Source: source, Bars: len(bars), Note: note}
 	if len(bars) > 0 {
@@ -131,107 +112,6 @@ func metaFor(name, symbol, source string, bars []Bar, note string) SeriesMeta {
 		m.End = bars[len(bars)-1].Date
 	}
 	return m
-}
-
-func klines(ctx context.Context, client *mcp.Client, symbol string, since time.Time) ([]Bar, string, error) {
-	source := "Bitget MCP (crypto/spot/kline)"
-	var all []Bar
-	var end *int64
-	for page := 0; page < 40; page++ {
-		params := map[string]any{
-			"symbol":   symbol,
-			"interval": "1d",
-			"exchange": "bitget",
-			"days":     90,
-			"limit":    100,
-		}
-		if end != nil {
-			params["end_time"] = *end
-		}
-		res, err := client.Query(ctx, "crypto_spot_kline", params)
-		if err != nil {
-			if len(all) > 0 {
-				log.Printf("mcp %s page %d stopped: %v", symbol, page, err)
-				break
-			}
-			return nil, source, err
-		}
-		if res.StatusCode == 204 || len(res.Data) == 0 || string(res.Data) == `""` {
-			break
-		}
-		bars, oldest, err := parseKlines(res.Data)
-		if err != nil {
-			return nil, source, fmt.Errorf("%s: %w", symbol, err)
-		}
-		if len(bars) == 0 {
-			break
-		}
-		all = append(all, bars...)
-		if !oldest.After(since) {
-			break
-		}
-		next := oldest.Add(-time.Millisecond).UnixMilli()
-		if end != nil && next >= *end {
-			break
-		}
-		end = &next
-	}
-	all = clean(all, since)
-	return all, source, nil
-}
-
-func parseKlines(raw json.RawMessage) ([]Bar, time.Time, error) {
-	// The MCP sometimes double-encodes the payload: `data` arrives as a JSON
-	// string whose contents are themselves the JSON object. Unwrap that once.
-	trimmed := bytes.TrimSpace(raw)
-	if len(trimmed) > 0 && trimmed[0] == '"' {
-		var inner string
-		if err := json.Unmarshal(trimmed, &inner); err == nil {
-			raw = json.RawMessage(inner)
-		}
-	}
-	var wrap struct {
-		Results []struct {
-			Date   string  `json:"date"`
-			Open   float64 `json:"open"`
-			High   float64 `json:"high"`
-			Low    float64 `json:"low"`
-			Close  float64 `json:"close"`
-			Volume float64 `json:"volume"`
-			Time   int64   `json:"time"`
-		} `json:"results"`
-	}
-	if err := json.Unmarshal(raw, &wrap); err != nil {
-		return nil, time.Time{}, err
-	}
-	bars := make([]Bar, 0, len(wrap.Results))
-	var oldest time.Time
-	for _, row := range wrap.Results {
-		ts := time.UnixMilli(row.Time).UTC()
-		if row.Time == 0 && row.Date != "" {
-			parsed, err := time.Parse(time.RFC3339, row.Date)
-			if err != nil {
-				continue
-			}
-			ts = parsed.UTC()
-		}
-		if row.Close <= 0 || ts.IsZero() {
-			continue
-		}
-		bar := Bar{
-			Date:   dateOnly(ts),
-			Open:   row.Open,
-			High:   row.High,
-			Low:    row.Low,
-			Close:  row.Close,
-			Volume: row.Volume,
-		}
-		bars = append(bars, bar)
-		if oldest.IsZero() || ts.Before(oldest) {
-			oldest = ts
-		}
-	}
-	return bars, oldest, nil
 }
 
 func bitgetSpot(ctx context.Context, symbol string, since time.Time) ([]Bar, error) {
@@ -310,6 +190,37 @@ func bitgetSpot(ctx context.Context, symbol string, since time.Time) ([]Bar, err
 		end = &next
 	}
 	return clean(all, since), nil
+}
+
+// bitgetSpotRetry wraps bitgetSpot with backoff so a transient rate-limit or
+// empty page does not drop a series. Required legs (rSPY, BTC, gold) get more
+// attempts because a single miss there fails the whole load.
+func bitgetSpotRetry(ctx context.Context, symbol string, since time.Time, required bool) ([]Bar, error) {
+	attempts := 2
+	if required {
+		attempts = 5
+	}
+	var lastErr error
+	for a := 0; a < attempts; a++ {
+		if a > 0 {
+			delay := time.Duration(250*(1<<uint(a))) * time.Millisecond // 0.5s, 1s, 2s, 4s
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+		bars, err := bitgetSpot(ctx, symbol, since)
+		if err == nil && len(bars) > 0 {
+			return bars, nil
+		}
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("%s: no candles returned", symbol)
+		}
+	}
+	return nil, lastErr
 }
 
 func probeEquityHistorical(ctx context.Context, client *mcp.Client) string {
