@@ -14,11 +14,17 @@ Read yesterday's close only; today's close is the result, not an input.
 - **Hysteresis:** a sleeve must clear its trend line by **3%** to switch on and only drops when price falls back below the line, and it is held at least **two trading weeks**. That buffer holds turnover near **three switches a year**.
 - Each switch is charged **15 bps** (10 bps fee + 5 bps slippage); a **40 bps** harsh-cost run is reported alongside.
 
-An earlier version chased the strongest S&P sector token in risk-on. It overfit in sample and its out-of-sample Sharpe went negative, so it was dropped in favour of holding the broad market. `Spec.SectorChase()` keeps that discarded rule for comparison. Qwen, when `QWEN_API_KEY` is set, only writes the sentence under the current signal; it does not pick the sleeve.
+An earlier version chased the strongest S&P sector token in risk-on. It overfit in sample and its out-of-sample Sharpe went negative, so it was dropped in favour of holding the broad market. `Spec.SectorChase()` keeps that discarded rule for comparison.
+
+## Role of the LLM
+
+**Qwen narrates; it never trades.** The strategy is a frozen deterministic rule — every holding is decided by the signal in `internal/strategy` and the backtest in `internal/backtest`, with no model in the loop. When `QWEN_API_KEY` is set, Qwen (`qwen3.8-max`, hackathon endpoint) is handed the *already-decided* holding plus the day's numbers and asked to rewrite it as one plain-English sentence for a non-expert. It cannot change, veto, or choose the sleeve.
+
+The page loads the deterministic rule sentence instantly, then swaps in the live Qwen sentence and tags its source (`narration · Qwen qwen3.8-max`). If Qwen is slow, keyless, or unavailable, the rule sentence stays and the tag says so — the strategy and its metrics are identical either way. See `internal/web/narrate.go` (`explainSourced`, `qwen`) and the `/note` endpoint.
 
 ## Data and provenance
 
-Prices come from `bitget-mcp-server` (`BITGET_US_MCP_URL`, handbook endpoint `https://agent.bitget.com/mcp`, tool `do_query` / `crypto/spot/kline`). If that series is short, the same Bitget symbol is loaded from the public spot candle API and the page says so. Yahoo Finance is not used.
+Prices come from Bitget's **public spot candle API** (`https://api.bitget.com/api/v2/spot/market/candles`, daily granularity) for every symbol, and the page names that source per series. Per the S2 handbook, `bitget-mcp-server` (`BITGET_US_MCP_URL`, `https://agent.bitget.com/mcp`) serves US-stock quotes and fundamentals — not rToken/crypto klines — so it is only used to probe equity coverage, not as the price feed. Yahoo Finance is not used.
 
 Bitget listed the rToken US-stock pairs (rSPYUSDT and the sector tokens) on **2026-06-02** (Reality / Stocks 2.0). The candles Bitget serves before that day are the **underlying reference price** for the same stock/ETF, not live rToken trades; candles on and after it are **genuine rToken market prints**. The code labels this on every rToken series and in `internal/market/provenance.go`. Because the out-of-sample window is the last ~63 weekdays (starting late June 2026), **the entire held-out test runs on live rToken data.** BTCUSDT and PAXGUSDT are ordinary spot pairs, live throughout.
 
