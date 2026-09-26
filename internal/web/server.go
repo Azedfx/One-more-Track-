@@ -85,10 +85,11 @@ func (s *Server) Compute(fresh bool) (market.Book, backtest.Result, string, erro
 }
 
 func (s *Server) load(fresh bool) (market.Book, error) {
+	tag := func(b market.Book, origin string) market.Book { b.Origin = origin; return b }
 	if !fresh {
 		if book, ok := market.LoadCached(cachePath); ok {
 			log.Printf("using prices saved at %s", book.Fetched.Format(time.RFC3339))
-			return book, nil
+			return tag(book, "cache"), nil
 		}
 	}
 	log.Printf("downloading daily prices from Bitget")
@@ -99,7 +100,7 @@ func (s *Server) load(fresh bool) (market.Book, error) {
 		if err := market.SaveCache(cachePath, book); err != nil {
 			log.Printf("cache write: %v", err)
 		}
-		return book, nil
+		return tag(book, "live"), nil
 	}
 	// Live refresh failed (e.g. the host is geo-blocked by the candle API).
 	// Fall back to the last good cache, then to the bundled seed, so the
@@ -107,11 +108,11 @@ func (s *Server) load(fresh bool) (market.Book, error) {
 	log.Printf("live price download failed: %v", err)
 	if book, ok := market.LoadCachedStale(cachePath); ok {
 		log.Printf("serving last cached prices from %s (stale)", book.Fetched.Format(time.RFC3339))
-		return book, nil
+		return tag(book, "stale"), nil
 	}
 	if book, ok := market.Seed(); ok {
 		log.Printf("serving the bundled seed dataset (%d days through %s)", len(book.Days), book.Prov.LastDay.Format("2006-01-02"))
-		return book, nil
+		return tag(book, "seed"), nil
 	}
 	return market.Book{}, err
 }
@@ -240,6 +241,12 @@ func templateFuncs() template.FuncMap {
 				return "—"
 			}
 			return t.UTC().Format("2006-01-02")
+		},
+		"clock": func(t time.Time) string {
+			if t.IsZero() {
+				return "—"
+			}
+			return t.UTC().Format("2006-01-02 15:04 UTC")
 		},
 		"bps": func(v float64) string { return fmt.Sprintf("%.0f bps", v*10000) },
 		"neg": func(v float64) bool { return v < 0 },
