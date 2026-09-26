@@ -43,14 +43,10 @@ func Load(ctx context.Context, mcpURL string) (Book, error) {
 			if err != nil || seriesShort(bars, since) {
 				rest, restErr := bitgetSpot(ctx, item.Pair, since)
 				if restErr == nil && longer(rest, bars) {
-					note := "Bitget's research feed stopped early, so the longer history is the same symbol's public Bitget candles."
-					if err != nil {
-						note = "The research feed failed, so these candles are the public Bitget price API."
-					}
-					log.Printf("%s: research feed had %d days, public Bitget candles have %d", item.Title, len(bars), len(rest))
+					log.Printf("%s: MCP feed had %d days, public Bitget candles have %d", item.Title, len(bars), len(rest))
 					bars = rest
-					source = "Bitget public candles"
-					out[i] = fetched{key: item.Key, bars: bars, meta: metaFor(item.Title, item.Pair, source, bars, note)}
+					source = "Bitget spot API (api.bitget.com)"
+					out[i] = fetched{key: item.Key, bars: bars, meta: metaFor(item.Title, item.Pair, source, bars, "")}
 					return
 				}
 			}
@@ -138,7 +134,7 @@ func metaFor(name, symbol, source string, bars []Bar, note string) SeriesMeta {
 }
 
 func klines(ctx context.Context, client *mcp.Client, symbol string, since time.Time) ([]Bar, string, error) {
-	source := "bitget-mcp-server do_query crypto/spot/kline"
+	source := "Bitget MCP (crypto/spot/kline)"
 	var all []Bar
 	var end *int64
 	for page := 0; page < 40; page++ {
