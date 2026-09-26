@@ -135,8 +135,10 @@ func (s *Server) note(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
 	}
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	fmt.Fprint(w, explain(r.Context(), s.cfg, result.Snap, result.Spec))
+	text, source := explainSourced(r.Context(), s.cfg, result.Snap, result.Spec)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, "<span class=\"narr-text\">%s</span> <span class=\"narr-src mono\">narration · %s</span>",
+		template.HTMLEscapeString(text), template.HTMLEscapeString(source))
 }
 
 func (s *Server) render(w http.ResponseWriter, r *http.Request, name string) {
