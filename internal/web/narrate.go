@@ -16,19 +16,27 @@ import (
 	"regime-sleeve/internal/strategy"
 )
 
-func explain(ctx context.Context, cfg config.Config, snap backtest.Snapshot, spec strategy.Spec) string {
+// explainSourced returns the narration plus a short label of where it came
+// from ("Qwen ..." vs a rule fallback). The strategy itself never uses Qwen —
+// the LLM only rewrites the already-decided holding into one plain sentence.
+func explainSourced(ctx context.Context, cfg config.Config, snap backtest.Snapshot, spec strategy.Spec) (string, string) {
 	plain := plainExplain(snap, spec)
 	if strings.TrimSpace(cfg.QwenKey) == "" {
-		return plain
+		return plain, "rule sentence (no LLM key set)"
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 45*time.Second)
 	defer cancel()
 	text, err := qwen(ctx, cfg, snap, spec)
 	if err != nil || strings.TrimSpace(text) == "" {
-		log.Printf("Qwen did not answer in time. The page is showing the rule's own sentence. The strategy does not use Qwen.")
-		return plain
+		log.Printf("Qwen did not answer in time; showing the rule's own sentence: %v", err)
+		return plain, "rule fallback (Qwen unavailable)"
 	}
-	return strings.TrimSpace(text)
+	return strings.TrimSpace(text), "Qwen " + cfg.QwenModel
+}
+
+func explain(ctx context.Context, cfg config.Config, snap backtest.Snapshot, spec strategy.Spec) string {
+	text, _ := explainSourced(ctx, cfg, snap, spec)
+	return text
 }
 
 func plainExplain(snap backtest.Snapshot, spec strategy.Spec) string {
